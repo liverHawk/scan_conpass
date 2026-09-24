@@ -18,6 +18,33 @@
         "type": "command",
         "command": "cd \"$(dirname \"$file_path\")\" && pnpm format 2>&1 || true"
       }
+    },
+    {
+      "name": "Run Property-based Tests on Save (Frontend)",
+      "trigger": "PostFileSave",
+      "matcher": "^frontend/src/.*\\.spec\\.ts$",
+      "action": {
+        "type": "command",
+        "command": "cd /Users/toshi_pro/Documents/gdg/scan_conpass/frontend && pnpm test:unit --run 2>&1 | head -50"
+      }
+    },
+    {
+      "name": "Run Property-based Tests on Save (Backend)",
+      "trigger": "PostFileSave",
+      "matcher": "^backend/src/.*\\.spec\\.ts$",
+      "action": {
+        "type": "command",
+        "command": "cd /Users/toshi_pro/Documents/gdg/scan_conpass/backend && pnpm test --run 2>&1 | head -50 || echo 'Test setup needed'"
+      }
+    },
+    {
+      "name": "Verify Utility Functions (Backend)",
+      "trigger": "PostFileSave",
+      "matcher": "^backend/src/utils\\.ts$",
+      "action": {
+        "type": "command",
+        "command": "cd /Users/toshi_pro/Documents/gdg/scan_conpass/backend && pnpm test src/utils.spec.ts --run 2>&1 | head -50 || echo 'Tests running'"
+      }
     }
   ]
 }
