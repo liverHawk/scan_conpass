@@ -10,6 +10,8 @@
     "hono": "^4.13.9"
   },
   "devDependencies": {
+    "oxfmt": "^0.70.0",
+    "oxlint": "^1.85.0",
     "wrangler": "^4.110.0"
   }
 }
