@@ -13,6 +13,7 @@
     "format": "oxfmt src/"
   },
   "dependencies": {
+    "jsqr": "^1.4.0",
     "vue": "^3.5.42"
   },
   "devDependencies": {
@@ -25,6 +26,7 @@
     "jsdom": "^30.0.1",
     "npm-run-all2": "^9.0.3",
     "oxfmt": "^0.67.0",
+    "oxlint": "^1.85.0",
     "typescript": "~6.0.0",
     "vite": "^8.2.2",
     "vite-plugin-vue-devtools": "^8.2.1",
