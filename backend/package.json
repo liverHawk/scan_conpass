@@ -13,9 +13,10 @@
     "hono": "^4.13.9"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241203.1",
+    "fast-check": "^4.10.2",
     "oxfmt": "^0.70.0",
     "oxlint": "^1.85.0",
-    "wrangler": "^4.110.0",
-    "@cloudflare/workers-types": "^4.20241203.1"
+    "wrangler": "^4.110.0"
   }
 }
