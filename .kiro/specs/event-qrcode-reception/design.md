@@ -13,7 +13,7 @@
 | **バックエンドホスティング** | Cloudflare Workers | 無料（100,000 リクエスト/日）、30 秒タイムアウト、低遅延 |
 | **データストレージ** | Cloudflare KV Store | 無料（100k 読込/日、10k 書込/日）、Workers ネイティブ |
 | **セッション管理** | KV Store + メモリ | Puppeteer Session 情報を KV に保存、Workers プロセス内キャッシュ |
-| **スクレイピング** | fetch + Cheerio | 軽量、Workers で実行可能、Puppeteer より高速 |
+| **スクレイピング** | fetch + HTML Rewriter | Workers ネイティブ、最速、npm 依存なし |
 | **ロギング** | KV Store + Google Sheets | Workers 内で管理、永続ストレージは Google Sheets API |
 | **認証方式** | API パスワード | シンプル、複数端末対応、複雑なセッション管理不要 |
 
@@ -61,8 +61,7 @@
 │  │ - QRコード形式検証                                  │ │
 │  │ - Connpass Session 確認 (KV から取得)             │ │
 │  │ - fetch でイベント URL を取得                      │ │
-│  │ - Cheerio で参加者一覧をパース                     │ │
-│  │ - 正規表現で user 抽出                             │ │
+│  │ - HTML Rewriter で参加者一覧をパース               │ │
 │  │ - qrCodeData と照合                               │ │
 │  │ - 登録結果を KV に記録                             │ │
 │  └──────────┬──────────────────────────────────────────┘ │
@@ -248,8 +247,9 @@ export async function verifyParticipant(
   // 3. キャッシュミスの場合、スクレイピング実行
   if (!participants) {
     try {
-      const html = await fetch(eventUrl).then(r => r.text());
-      participants = parseParticipants(html); // Cheerio/正規表現でパース
+      const response = await fetch(eventUrl);
+      const html = await response.text();
+      participants = parseParticipants(html); // HTML Rewriter でパース
       
       // KV に 5-10 分 TTL で保存
       await kv.put(cacheKey, JSON.stringify(participants), { expirationTtl: 600 });
@@ -259,7 +259,7 @@ export async function verifyParticipant(
   }
 
   // 4. 参加者照合
-  const found = participants.some(p => p.username === qrCodeData);
+  const found = participants.some((p: string) => p === qrCodeData);
   if (!found) {
     return { success: false, error: 'PARTICIPANT_NOT_FOUND' };
   }
@@ -278,41 +278,73 @@ export async function verifyParticipant(
 }
 ```
 
-**HTML パース（Cheerio 使用）**:
+**HTML パース（HTML Rewriter 使用）**:
 
 ```typescript
-import cheerio from 'cheerio';
+import { HTMLRewriter, Element } from "html-rewriter";
 
-function parseParticipants(html: string): Participant[] {
-  const $ = cheerio.load(html);
-  const participants: Participant[] = [];
+class ParticipantHandler {
+  participants: string[] = [];
 
-  // Connpass の参加者テーブル構造に合わせてセレクタ調整
-  $('table tbody tr').each((i, elem) => {
-    const username = $(elem).find('td:first-child').text().trim();
-    if (username) {
-      participants.push({ username });
+  element(element: Element) {
+    // Connpass の参加者テーブル構造に合わせて調整
+    // 例: <a href="/user/...">username</a> または <td>username</td>
+    if (element.tagName === 'a' || element.tagName === 'td') {
+      // テキストノードの抽出は onDocument で処理
+      element.onEndTag(async (endTag) => {
+        // テキストはイベントハンドラで追跡
+      });
     }
+  }
+
+  text(text: Text) {
+    // テキストノードを抽出
+    const content = text.text.trim();
+    
+    // Connpass のユーザー名パターンに合わせてフィルタリング
+    if (content && /^[a-zA-Z0-9_\-\.]+$/.test(content)) {
+      this.participants.push(content);
+    }
+  }
+}
+
+export async function parseParticipants(html: string): Promise<string[]> {
+  const handler = new ParticipantHandler();
+  
+  // HTML Rewriter で全テーブル行を処理
+  const rewriter = new HTMLRewriter()
+    .on('tr', handler)
+    .on('a[href*="/user/"]', handler)
+    .onDocument(handler);
+
+  // 注意: HTMLRewriter は response に直接作用するため、
+  // テキスト抽出には Response オブジェクトが必要
+  const response = new Response(html, {
+    headers: { 'content-type': 'text/html' }
   });
 
-  return participants;
+  await rewriter.transform(response).text();
+  
+  return handler.participants;
 }
 ```
 
-**または正規表現による高速パース**:
+**または正規表現による軽量パース（フォールバック）**:
 
 ```typescript
-function parseParticipantsRegex(html: string): Participant[] {
+function parseParticipantsRegex(html: string): string[] {
   // Connpass HTML 構造の正規表現パターン
-  const regex = /<tr.*?><td[^>]*>([a-zA-Z0-9_\-\.]+)<\/td>/g;
-  const participants: Participant[] = [];
+  // ユーザーリンク: <a href="/user/...">username</a>
+  const userLinkRegex = /<a href="\/user\/[^"]*">([a-zA-Z0-9_\-\.]+)<\/a>/g;
+  const participants: string[] = [];
   let match;
 
-  while ((match = regex.exec(html)) !== null) {
-    participants.push({ username: match[1] });
+  while ((match = userLinkRegex.exec(html)) !== null) {
+    participants.push(match[1]);
   }
 
-  return participants;
+  // 重複を削除
+  return [...new Set(participants)];
 }
 ```
 
@@ -836,7 +868,7 @@ wrangler publish --env production
 | 制約 | 対応策 |
 |---|---|
 | **リクエストタイムアウト: 30 秒** | 非同期処理で Google Sheets 保存を Workers 内で完結させない。KV のみで返す。 |
-| **CPU 時間: 50ms/リクエスト** | 正規表現による高速パース。Puppeteer ではなく fetch + Cheerio 使用。 |
+| **CPU 時間: 50ms/リクエスト** | HTML Rewriter による高速パース。npm 依存なし。 |
 | **メモリ: 128MB** | 大規模な HTML は分割パース。キャッシュ戦略で重複アクセス削減。 |
 | **リクエスト数: 100,000/日** | キャッシング（TTL: 5-10 分）でスクレイピング回数削減 |
 | **KV 読み込み: 100,000/日** | 適切なキャッシング戦略で削減 |
