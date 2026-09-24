@@ -1,0 +1,23 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Lint on Save (TypeScript/Vue)",
+      "trigger": "PostFileSave",
+      "matcher": "\\.(ts|tsx|vue|js|jsx)$",
+      "action": {
+        "type": "command",
+        "command": "cd \"$(dirname \"$file_path\")\" && pnpm lint --fix \"$file_name\" 2>&1 || true"
+      }
+    },
+    {
+      "name": "Format on Save (TypeScript/Vue)",
+      "trigger": "PostFileSave",
+      "matcher": "\\.(ts|tsx|vue|js|jsx)$",
+      "action": {
+        "type": "command",
+        "command": "cd \"$(dirname \"$file_path\")\" && pnpm format 2>&1 || true"
+      }
+    }
+  ]
+}
