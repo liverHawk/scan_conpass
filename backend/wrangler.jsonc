@@ -2,37 +2,31 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "backend",
   "main": "src/index.ts",
-  "compatibility_date": "2026-09-24"
-  // "compatibility_flags": [
-  //   "nodejs_compat"
-  // ],
-  // "vars": {
-  //   "MY_VAR": "my-variable"
-  // },
-  // "kv_namespaces": [
-  //   {
-  //     "binding": "MY_KV_NAMESPACE",
-  //     "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-  //   }
-  // ],
-  // "r2_buckets": [
-  //   {
-  //     "binding": "MY_BUCKET",
-  //     "bucket_name": "my-bucket"
-  //   }
-  // ],
-  // "d1_databases": [
-  //   {
-  //     "binding": "MY_DB",
-  //     "database_name": "my-database",
-  //     "database_id": ""
-  //   }
-  // ],
-  // "ai": {
-  //   "binding": "AI"
-  // },
-  // "observability": {
-  //   "enabled": true,
-  //   "head_sampling_rate": 1
-  // }
+  "compatibility_date": "2026-09-24",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "vars": {
+    "API_PASSWORD": "dev_password_placeholder",
+    "API_PASSWORD_EXPIRY": "2026-12-31T23:59:59Z",
+    "FRONTEND_URL": "http://localhost:5173"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "CONNPASS_SESSION",
+      "id": "placeholder_session_namespace"
+    },
+    {
+      "binding": "PARTICIPANTS_CACHE",
+      "id": "placeholder_cache_namespace"
+    },
+    {
+      "binding": "REGISTRATION_RECORDS",
+      "id": "placeholder_records_namespace"
+    },
+    {
+      "binding": "AUDIT_LOGS",
+      "id": "placeholder_audit_namespace"
+    }
+  ]
 }
